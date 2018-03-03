@@ -1,0 +1,124 @@
+---
+title: "NOAA Analysis: Event Impact"
+output: html_document
+---
+
+###Synopsis
+This project involves exploring the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database. This database tracks characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.  Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.  The events in the database start in the year 1950 and end in November 2011. In the earlier years of the database there are generally fewer events recorded, most likely due to a lack of good records.
+
+###Data Processing
+
+Load Libraries
+```{r load libraries}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+```
+
+Load data
+
+```{r setwd}
+setwd("/Users/Anna/Desktop/Coursera Data Science")
+```
+
+Download file of dataset
+
+```{r download}
+url <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(url, destfile ='repdata-data-StormData.csv.bz2')
+```
+
+Read data
+
+```{r readdata}
+stormdata <- read.csv("repdata-data-StormData.csv.bz2")
+head(stormdata)
+```
+
+###Results
+
+Tornados and floods are the most damaging weather events overall.
+
+**Event types harmful to population health**
+
+Population health determined by the number of fatalties and injuries.
+Fatalities and injuries classified by type and then ordered.
+
+Fatalities Data
+```{r fatalities}
+fatalityData <- (subset(stormdata, FATALITIES > 0))[c(8, 23)]
+fatalityGroupedData <- aggregate(FATALITIES ~ EVTYPE, data = fatalityData, FUN = "sum", na.rm = TRUE)
+fatalityGroupedData <- fatalityGroupedData[order(fatalityGroupedData$FATALITIES, decreasing=TRUE), ]
+fatalityGroupedData <- fatalityGroupedData[1:5, ]
+fatalityGroupedData$EVTYPE <- factor(fatalityGroupedData$EVTYPE, levels=fatalityGroupedData$EVTYPE)
+```
+
+Injuries Data
+```{r injuries}
+injuryData <- (subset(stormdata, INJURIES > 0))[c(8, 24)]
+injuryGroupedData <- aggregate(INJURIES ~ EVTYPE, data = injuryData, FUN = "sum", na.rm = TRUE)
+injuryGroupedData <- injuryGroupedData[order(injuryGroupedData$INJURIES, decreasing=TRUE), ]
+injuryGroupedData <- injuryGroupedData[1:5, ]
+injuryGroupedData$EVTYPE <- factor(injuryGroupedData$EVTYPE, levels=injuryGroupedData$EVTYPE)
+```
+
+Fatalites Figure
+```{r fatalitiesfigure}
+ggplot(fatalityGroupedData, aes(x=EVTYPE, y=FATALITIES)) +
+  geom_bar(stat="identity") +
+  xlab("Types") + 
+  ylab("Fatalities") +
+  ggtitle("Total Fatalities")
+```
+
+Injuries figure
+```{r injuriesfigure}
+ggplot(injuryGroupedData, aes(x=EVTYPE, y=INJURIES)) +
+  geom_bar(stat="identity") +
+  xlab("Types") + 
+  ylab("Injuries") +
+  ggtitle("Total Injuries")
+```
+
+###Tornados are the most damaging weather type to population health (in both fatalities and injuries).
+
+**Event types with greatest economic impact**
+
+Economic impact measured by property and crop damage.  Code converts to monitary value.
+
+```{r}
+damageAmount <- function(amount, magnitude)
+{
+  returnAmount <- 0
+  if (toupper(magnitude)[1]=="K")
+  {
+    returnAmount <- (amount * 1000)
+  }
+  if (toupper(magnitude)[1]=="M")
+  {
+    returnAmount <- (amount * 1000000)
+  }
+  if (toupper(magnitude)[1]=="B")
+  {
+    returnAmount <- (amount * 1000000000)
+  }
+  return(returnAmount)
+}
+
+damageData <- (subset(stormdata, PROPDMG > 0 | CROPDMG > 0))[c(8, 25, 26, 27, 28)]
+damageData$DamageAmount <- ((mapply(damageAmount, damageData$PROPDMG, damageData$PROPDMGEXP)) +
+                                  (mapply(damageAmount, damageData$CROPDMG, damageData$CROPDMGEXP)))
+                          
+damageGroupedData <- aggregate(DamageAmount ~ EVTYPE, data = damageData, FUN = "sum", na.rm = TRUE)
+damageGroupedData <- damageGroupedData[order(damageGroupedData$DamageAmount, decreasing=TRUE), ]
+damageGroupedData <- damageGroupedData[1:5, ]
+damageGroupedData$EVTYPE <- factor(damageGroupedData$EVTYPE, levels=damageGroupedData$EVTYPE)
+```
+
+List of Top 5 weather events
+```{r}
+head(damageGroupedData, 5)
+
+```
+
+###Floods are the most damaging weather event (by crop and property damage).
